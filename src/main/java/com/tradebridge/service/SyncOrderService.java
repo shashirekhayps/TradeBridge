@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.zerodhatech.kiteconnect.KiteConnect;
@@ -19,10 +20,12 @@ import com.zerodhatech.models.OrderParams;
 @Service
 public class SyncOrderService {
 
-    private final Map<String, KiteConnect> kiteConnects;
+    private final Map<String,KiteConnect> kiteConnects;
+    private final RedisTemplate<String, String> redisTemplate;
 
-    public SyncOrderService(Map<String, KiteConnect> kiteConnects) {
+    public SyncOrderService(Map<String, KiteConnect> kiteConnects, RedisTemplate<String, String> redisTemplate) {
         this.kiteConnects = kiteConnects;
+        this.redisTemplate = redisTemplate;
     }
 
     public void syncOrders(String user1,String user2,String instrument) {
@@ -31,10 +34,8 @@ public class SyncOrderService {
         try {
             List<Order> user1Orders = filterOrders(kiteConnectUser1,instrument);
             List<Order> user2Orders = filterOrders(kiteConnectUser2,instrument);
-            List<Order> uniqueToUser1 = findUniqueToUser1(user1Orders,user2Orders);
-            List<Order> uniqueToUser2 = findUniqueToUser2(user1Orders,user2Orders);
+            List<Order> uniqueToUser1 = findUniqueToUser(user1Orders,user2Orders);
             placeOrder(uniqueToUser1,kiteConnectUser2);
-            placeOrder(uniqueToUser2,kiteConnectUser1);
         } catch (KiteException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
@@ -42,21 +43,12 @@ public class SyncOrderService {
         }
     }
 
-    public List<Order> findUniqueToUser1(List<Order> user1Orders,List<Order> user2Orders) {
+    public List<Order> findUniqueToUser(List<Order> user1Orders, List<Order> user2Orders) {
         return user1Orders.stream()
                 .filter(user1Order -> user2Orders.stream()
                         .noneMatch(user2Order -> user1Order.tradingSymbol.equals(user2Order.tradingSymbol)
                                 && user1Order.transactionType.equals(user2Order.transactionType)
                                 && user1Order.validity.equals(user2Order.validity)))
-                .toList();
-    }
-
-    public List<Order> findUniqueToUser2(List<Order> user1Orders,List<Order> user2Orders) {
-        return user2Orders.stream()
-                .filter(user2Order -> user1Orders.stream()
-                        .noneMatch(user1Order -> user2Order.tradingSymbol.equals(user1Order.tradingSymbol)
-                                && user2Order.transactionType.equals(user1Order.transactionType)
-                                && user2Order.validity.equals(user1Order.validity)))
                 .toList();
     }
 
@@ -70,19 +62,31 @@ public class SyncOrderService {
             orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
             orderParams.tradingsymbol = orderToPlace.tradingSymbol;
             orderParams.product = Constants.PRODUCT_NRML;
-            orderParams.exchange = Constants.EXCHANGE_NSE;
+            orderParams.exchange = Constants.EXCHANGE_NFO;
             orderParams.transactionType = orderToPlace.transactionType;
-            orderParams.validity = orderToPlace.validity;
             orderParams.price = getAdjustedValue(orderToPlace);
 
             Order order = null;
+            System.out.println("placing order " +
+                    orderParams.tradingsymbol +
+                    " of quantity : " +
+                    orderParams.quantity + " at order price " + orderParams.price);
             try {
-                order = kiteConnectUser.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+                String key = orderToPlace.tradingSymbol + orderToPlace.orderTimestamp.toString() + orderToPlace.quantity + orderToPlace.transactionType;
+                if(redisTemplate.opsForValue().get(key) == null) {
+                    order = kiteConnectUser.placeOrder(orderParams, Constants.VARIETY_REGULAR);
+                    redisTemplate.opsForValue().set(key, order.orderId);
+                } else {
+                    System.out.println(" Duplicate Order found for order " + orderToPlace.tradingSymbol );
+                }
             } catch (KiteException e) {
+                e.printStackTrace();
                 throw new RuntimeException(e);
             } catch (IOException e) {
+                e.printStackTrace();
                 throw new RuntimeException(e);
             }
+
             System.out.println(order.orderId);
         }
     }
@@ -97,7 +101,7 @@ public class SyncOrderService {
     private List<Order> filterOrders(KiteConnect kiteConnect,String instrument) throws IOException, KiteException {
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
         LocalDateTime currentDateTime = LocalDateTime.now(istZone);
-        LocalDateTime tenMinutesAgo = currentDateTime.minusMinutes(10);
+        LocalDateTime tenMinutesAgo = currentDateTime.minusMinutes(1200);
         Date tenMinutesAgoDate = Date.from(tenMinutesAgo.atZone(istZone).toInstant());
 
         return kiteConnect.getOrders().stream().

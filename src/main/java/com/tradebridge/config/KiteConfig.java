@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import com.tradebridge.service.KiteConnectFactory;
 import com.zerodhatech.kiteconnect.KiteConnect;
@@ -30,7 +31,7 @@ public class KiteConfig {
         for (Map.Entry<String, KiteProperties.UserProperty> entry : kiteProperties.getUsers().entrySet()) {
             String username = entry.getKey();
             KiteProperties.UserProperty userProperty = entry.getValue();
-            KiteConnect kiteConnect = kiteConnectFactory.createKiteConnect(userProperty.getApiKey(),userProperty.getRequestToken(), userProperty.getApiSecret());
+            KiteConnect kiteConnect = kiteConnectFactory.createKiteConnect(userProperty.getApiKey());
             kiteConnects.put(username, kiteConnect);
         }
         return kiteConnects;
