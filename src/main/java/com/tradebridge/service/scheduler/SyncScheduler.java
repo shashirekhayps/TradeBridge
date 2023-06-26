@@ -14,6 +14,6 @@ public class SyncScheduler {
         String user1 = "chandan";
         String user2 = "shashi";
         String instrument = "NIFTY";
-        syncOrderService.syncOrders(user1, user2, instrument);
+        syncOrderService.syncOrders(user1, user2, instrument,2);
     }
 }

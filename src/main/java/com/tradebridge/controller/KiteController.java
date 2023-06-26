@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tradebridge.service.KiteLoginService;
@@ -34,8 +35,12 @@ public class KiteController {
     }
 
     @PostMapping("/sync/{user1}/{user2}")
-    public void sync(@PathVariable String user1,@PathVariable  String user2,@RequestBody String instrument) {
-         syncOrderService.syncOrders(user1,user2,instrument);
+    public void sync(@PathVariable String user1,
+                     @PathVariable  String user2,
+                     @RequestParam("instrument") String instrument,
+                     @RequestParam("duration") int duration
+    ) {
+         syncOrderService.syncOrders(user1,user2,instrument,duration);
     }
 
     @PostMapping("/login/{user1}")
