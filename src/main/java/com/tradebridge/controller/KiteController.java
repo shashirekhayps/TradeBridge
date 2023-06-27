@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tradebridge.domain.SyncRequest;
 import com.tradebridge.service.KiteLoginService;
 import com.tradebridge.service.SyncOrderService;
 import com.tradebridge.service.UserAccountInfo;
@@ -37,10 +38,9 @@ public class KiteController {
     @PostMapping("/sync/{user1}/{user2}")
     public void sync(@PathVariable String user1,
                      @PathVariable  String user2,
-                     @RequestParam("instrument") String instrument,
-                     @RequestParam("duration") int duration
+                     @RequestBody SyncRequest syncRequest
     ) {
-         syncOrderService.syncOrders(user1,user2,instrument,duration);
+         syncOrderService.syncOrders(user1,user2,syncRequest.getInstrument(),syncRequest.getDuration());
     }
 
     @PostMapping("/login/{user1}")

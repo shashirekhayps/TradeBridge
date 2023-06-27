@@ -62,7 +62,7 @@ public class SyncOrderService {
 
             OrderParams orderParams = new OrderParams();
             orderParams.quantity = Integer.valueOf(orderToPlace.quantity);
-            orderParams.orderType = Constants.ORDER_TYPE_LIMIT;
+            orderParams.orderType = orderToPlace.orderType;
             orderParams.tradingsymbol = orderToPlace.tradingSymbol;
             orderParams.product = Constants.PRODUCT_NRML;
             orderParams.exchange = Constants.EXCHANGE_NFO;
@@ -95,10 +95,13 @@ public class SyncOrderService {
     }
 
     private Double getAdjustedValue(Order order) {
-        if(order.transactionType.equals(Constants.TRANSACTION_TYPE_BUY)) {
-           return Double.parseDouble(order.price ) + 1.0 ;
+        if(order.orderType.equals(Constants.ORDER_TYPE_LIMIT)) {
+            if (order.transactionType.equals(Constants.TRANSACTION_TYPE_BUY)) {
+                return Double.parseDouble(order.price) + 1.0;
+            }
+            return Double.parseDouble(order.price) - 1.0;
         }
-        return Double.parseDouble(order.price ) - 1.0 ;
+        return Double.parseDouble(order.price);
     }
 
     private List<Order> filterOrders(KiteConnect kiteConnect,String instrument,int duration) throws IOException, KiteException {
